@@ -1,0 +1,5 @@
+vendor/
+public/logos/*
+!public/logos/.gitkeep
+.env
+*.log
