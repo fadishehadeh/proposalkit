@@ -11,9 +11,9 @@ function rate_card_index(): void
     $selected_currency = in_array($_GET['currency'] ?? '', $currencies) ? $_GET['currency'] : 'AED';
 
     if ($companyId) {
-        $positions = db_all('SELECT * FROM positions WHERE is_active=1 AND company_id=? ORDER BY sort_order, designation', [$companyId]);
+        $positions = db_all('SELECT * FROM positions WHERE IFNULL(is_active,1)=1 AND company_id=? ORDER BY sort_order, designation', [$companyId]);
     } else {
-        $positions = db_all('SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id=p.company_id WHERE p.is_active=1 ORDER BY c.sort_order, p.sort_order, p.designation');
+        $positions = db_all('SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id=p.company_id WHERE IFNULL(p.is_active,1)=1 ORDER BY c.sort_order, p.sort_order, p.designation');
     }
 
     layout('rate-card.index', 'Rate Card', compact(
@@ -64,7 +64,7 @@ function proposals_create(): void
         SELECT p.*, c.name AS company_name
         FROM positions p
         LEFT JOIN companies c ON c.id = p.company_id
-        WHERE p.is_active=1
+        WHERE IFNULL(p.is_active, 1) = 1
         ORDER BY c.sort_order, p.sort_order, p.designation
     ');
     $currencies  = config('currencies');
