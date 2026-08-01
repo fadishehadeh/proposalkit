@@ -82,7 +82,7 @@ function proposals_store(): void
     $client_id    = (int) ($_POST['client_id']    ?? 0) ?: null;
     $project_name = trim($_POST['project_name']   ?? '');
     $multiplier   = (float) ($_POST['multiplier'] ?? 0);
-    $currency     = $_POST['currency']            ?? 'AED';
+    $currency     = $_POST['currency']            ?? config('default_currency');
     $notes        = trim($_POST['notes']          ?? '');
     $company_id   = (int) ($_POST['company_id']   ?? 0) ?: null;
 

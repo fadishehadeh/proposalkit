@@ -76,7 +76,7 @@ foreach ($positions as $p) {
               <label class="form-label fw-semibold">Currency</label>
               <select name="currency" id="currency" class="form-select">
                 <?php foreach ($currencies as $c): ?>
-                  <option value="<?= $c ?>" <?= old('currency', 'AED') === $c ? 'selected' : '' ?>><?= $c ?></option>
+                  <option value="<?= $c ?>" <?= old('currency', config('default_currency')) === $c ? 'selected' : '' ?>><?= $c ?></option>
                 <?php endforeach ?>
               </select>
             </div>

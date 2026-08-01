@@ -15,6 +15,7 @@ return [
         'agency' => 'G2Mena',
         'base'   => '/g2ratecard',
     ],
-    'currencies'  => ['AED', 'USD', 'QAR'],
+    'currencies'        => ['QAR', 'AED', 'USD'],
+    'default_currency'  => 'QAR',
     'multipliers' => [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 2.0],
 ];
