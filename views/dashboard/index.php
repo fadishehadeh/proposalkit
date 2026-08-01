@@ -35,8 +35,8 @@ function value_card(string $label, float $value, string $currency, string $color
 
 <!-- Value cards -->
 <div class="row g-3 mb-4">
-  <?php value_card('Pipeline Value (Annual)', $values['sent'], 'AED', '#0891b2', 'Sum of all sent proposals — annual fees') ?>
-  <?php value_card('Won Value (Annual)', $values['approved'], 'AED', '#059669', 'Sum of all approved proposals — annual fees') ?>
+  <?php value_card('Pipeline Value (Annual)', $values['sent'], config('default_currency'), '#0891b2', 'Sum of all sent proposals — annual fees') ?>
+  <?php value_card('Won Value (Annual)', $values['approved'], config('default_currency'), '#059669', 'Sum of all approved proposals — annual fees') ?>
 </div>
 
 <!-- Recent proposals + Top clients -->
