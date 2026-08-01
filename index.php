@@ -54,6 +54,8 @@ $routes = [
     ['GET',  '#^/proposals/create$#',               'proposals_create'],
     ['POST', '#^/proposals/create$#',               'proposals_store'],
     ['GET',  '#^/proposals/(\d+)$#',                'proposals_show'],
+    ['GET',  '#^/proposals/(\d+)/edit$#',           'proposals_edit'],
+    ['POST', '#^/proposals/(\d+)/edit$#',           'proposals_update'],
     ['GET',  '#^/proposals/(\d+)/pdf$#',            'proposals_pdf'],
     ['GET',  '#^/proposals/(\d+)/export/excel$#',   'proposals_excel'],
     ['POST', '#^/proposals/(\d+)/delete$#',         'proposals_destroy'],

@@ -178,6 +178,98 @@ function proposals_pdf(int $id): void
     view('proposals.pdf', compact('proposal', 'items'));
 }
 
+function proposals_edit(int $id): void
+{
+    $proposal = db_fetch('SELECT * FROM proposals WHERE id = ?', [$id]);
+    if (!$proposal) { flash('error', 'Proposal not found.'); redirect('/proposals'); }
+
+    $items      = db_all('SELECT * FROM proposal_items WHERE proposal_id = ? ORDER BY sort_order', [$id]);
+    $companies  = db_all('SELECT * FROM companies WHERE is_active=1 ORDER BY sort_order, name');
+    $clients    = db_all('SELECT * FROM clients WHERE is_active=1 ORDER BY name');
+    $positions  = db_all('
+        SELECT p.*, c.name AS company_name
+        FROM positions p
+        LEFT JOIN companies c ON c.id = p.company_id
+        WHERE IFNULL(p.is_active, 1) = 1
+        ORDER BY c.sort_order, p.sort_order, p.designation
+    ');
+    $currencies  = config('currencies');
+    $multipliers = config('multipliers');
+
+    layout('proposals.edit', 'Edit Proposal', compact('proposal', 'items', 'positions', 'companies', 'clients', 'currencies', 'multipliers'));
+}
+
+function proposals_update(int $id): void
+{
+    if (!csrf_verify()) {
+        flash('error', 'Invalid request.');
+        redirect("/proposals/{$id}/edit");
+    }
+
+    $proposal = db_fetch('SELECT * FROM proposals WHERE id = ?', [$id]);
+    if (!$proposal) { flash('error', 'Proposal not found.'); redirect('/proposals'); }
+
+    $client_id    = (int) ($_POST['client_id']    ?? 0) ?: null;
+    $project_name = trim($_POST['project_name']   ?? '');
+    $multiplier   = (float) ($_POST['multiplier'] ?? 0);
+    $currency     = $_POST['currency']            ?? config('default_currency');
+    $notes        = trim($_POST['notes']          ?? '');
+    $company_id   = (int) ($_POST['company_id']   ?? 0) ?: null;
+
+    $currencies = config('currencies');
+    $errors = [];
+    if (!$client_id)          $errors[] = 'Please select a client.';
+    if ($project_name === '') $errors[] = 'Project name is required.';
+    if ($multiplier <= 0)     $errors[] = 'Please select a multiplier.';
+    if (!in_array($currency, $currencies, true)) $errors[] = 'Invalid currency.';
+
+    $client_name = $proposal['client_name'];
+    if ($client_id) {
+        $cl = db_fetch('SELECT name FROM clients WHERE id = ?', [$client_id]);
+        if (!$cl) $errors[] = 'Selected client not found.';
+        else       $client_name = $cl['name'];
+    }
+
+    $designations = $_POST['designation']    ?? [];
+    $salaries     = $_POST['monthly_salary'] ?? [];
+    $allocations  = $_POST['allocation']     ?? [];
+    $position_ids = $_POST['position_id']    ?? [];
+
+    $newItems = [];
+    foreach ($designations as $i => $desig) {
+        $desig = trim($desig);
+        $sal   = (float) ($salaries[$i] ?? 0);
+        $alloc = (float) ($allocations[$i] ?? 0);
+        $pid   = ($position_ids[$i] ?? '') !== '' ? (int) $position_ids[$i] : null;
+        if ($desig === '' || $sal <= 0 || $alloc <= 0) continue;
+        $newItems[] = ['designation' => $desig, 'monthly_salary' => $sal, 'allocation' => $alloc, 'position_id' => $pid];
+    }
+    if (empty($newItems)) $errors[] = 'At least one position line is required.';
+
+    if ($errors) {
+        set_old($_POST);
+        flash('error', implode(' ', $errors));
+        redirect("/proposals/{$id}/edit");
+    }
+
+    db_run(
+        'UPDATE proposals SET company_id=?, client_id=?, client_name=?, project_name=?, multiplier=?, currency=?, notes=?, updated_at=NOW() WHERE id=?',
+        [$company_id, $client_id, $client_name, $project_name, $multiplier, $currency, $notes, $id]
+    );
+
+    db_run('DELETE FROM proposal_items WHERE proposal_id = ?', [$id]);
+    foreach ($newItems as $i => $item) {
+        db_run(
+            'INSERT INTO proposal_items (proposal_id, position_id, designation, monthly_salary, allocation, sort_order) VALUES (?,?,?,?,?,?)',
+            [$id, $item['position_id'], $item['designation'], $item['monthly_salary'], $item['allocation'], $i]
+        );
+    }
+
+    clear_old();
+    flash('success', 'Proposal updated.');
+    redirect("/proposals/{$id}");
+}
+
 function proposals_status(int $id): void
 {
     if (!csrf_verify()) { flash('error', 'Invalid request.'); redirect("/proposals/{$id}"); }

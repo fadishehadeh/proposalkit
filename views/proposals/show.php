@@ -71,6 +71,11 @@ document.getElementById('topbar-actions').innerHTML = `
       </form>
       <?php endforeach ?>
 
+      <!-- Edit -->
+      <a href="<?= url("/proposals/{$proposal['id']}/edit") ?>" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-pencil me-1"></i> Edit
+      </a>
+
       <!-- New version -->
       <form method="post" action="<?= url("/proposals/{$proposal['id']}/version") ?>"
             onsubmit="return confirm('Create v<?= $version + 1 ?>? This proposal (v<?= $version ?>) will be preserved as-is.')">
@@ -202,6 +207,9 @@ document.getElementById('topbar-actions').innerHTML = `
 </div>
 
 <div class="mt-4 d-flex gap-2">
+  <a href="<?= url("/proposals/{$proposal['id']}/edit") ?>" class="btn btn-outline-secondary">
+    <i class="bi bi-pencil me-1"></i> Edit
+  </a>
   <a href="<?= url("/proposals/{$proposal['id']}/pdf") ?>" target="_blank" class="btn btn-outline-secondary">
     <i class="bi bi-printer me-1"></i> Print / PDF
   </a>
