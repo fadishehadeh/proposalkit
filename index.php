@@ -47,6 +47,8 @@ $routes = [
     ['GET',  '#^/positions/(\d+)/edit$#',           'positions_edit'],
     ['POST', '#^/positions/(\d+)/edit$#',           'positions_update'],
     ['POST', '#^/positions/(\d+)/delete$#',         'positions_destroy'],
+    // Guide
+    ['GET',  '#^/guide$#',                          'guide_page'],
     // Rate card
     ['GET',  '#^/rate-card$#',                      'rate_card_index'],
     // Proposals
@@ -72,6 +74,12 @@ foreach ($routes as [$routeMethod, $pattern, $handler]) {
     $handler(...$args);
     $matched = true;
     break;
+}
+
+function guide_page(): void {
+    header('Content-Type: text/html; charset=utf-8');
+    readfile(BASE_PATH . '/guide.html');
+    exit;
 }
 
 if (!$matched) {
