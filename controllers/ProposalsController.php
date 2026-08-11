@@ -109,7 +109,7 @@ function proposals_store(): void
     foreach ($designations as $i => $desig) {
         $desig = trim($desig);
         $sal   = (float) ($salaries[$i] ?? 0);
-        $alloc = (float) ($allocations[$i] ?? 0);
+        $alloc = (float) ($allocations[$i] ?? 0) / 100;
         $pid   = ($position_ids[$i] ?? '') !== '' ? (int) $position_ids[$i] : null;
         if ($desig === '' || $sal <= 0 || $alloc <= 0) continue;
         $items[] = ['designation' => $desig, 'monthly_salary' => $sal, 'allocation' => $alloc, 'position_id' => $pid];
@@ -239,7 +239,7 @@ function proposals_update(int $id): void
     foreach ($designations as $i => $desig) {
         $desig = trim($desig);
         $sal   = (float) ($salaries[$i] ?? 0);
-        $alloc = (float) ($allocations[$i] ?? 0);
+        $alloc = (float) ($allocations[$i] ?? 0) / 100;
         $pid   = ($position_ids[$i] ?? '') !== '' ? (int) $position_ids[$i] : null;
         if ($desig === '' || $sal <= 0 || $alloc <= 0) continue;
         $newItems[] = ['designation' => $desig, 'monthly_salary' => $sal, 'allocation' => $alloc, 'position_id' => $pid];

@@ -112,7 +112,7 @@ foreach ($positions as $p) {
                 <th style="width:210px">Select Position</th>
                 <th style="min-width:170px">Designation / Title</th>
                 <th style="width:145px">Monthly Salary</th>
-                <th style="width:100px">FTE</th>
+                <th style="width:100px">FTE %</th>
                 <th style="width:150px">Monthly Fee</th>
                 <th style="width:150px">Annual Fee</th>
                 <th style="width:40px"></th>
@@ -198,7 +198,7 @@ function addRow(posId, desig, salary, alloc) {
     </td>
     <td>
       <input type="number" class="form-control form-control-sm pos-alloc" name="allocation[]"
-             value="${alloc || '1'}" step="0.1" min="0.1" max="20" required onchange="recalcRow(this.closest('tr'))">
+             value="${alloc || '100'}" step="5" min="5" max="2000" required onchange="recalcRow(this.closest('tr'))">
     </td>
     <td class="pos-monthly text-end num text-muted">—</td>
     <td class="pos-annual text-end num text-muted">—</td>
@@ -225,7 +225,7 @@ function recalcRow(row) {
   const mult  = parseFloat(multiplierSelect.value) || 0;
   const sal   = parseFloat(row.querySelector('.pos-salary').value) || 0;
   const alloc = parseFloat(row.querySelector('.pos-alloc').value)  || 0;
-  const mFee  = sal * mult * alloc;
+  const mFee  = sal * mult * (alloc / 100);
   const aFee  = mFee * 12;
   row.querySelector('.pos-monthly').textContent = mFee ? fmt(mFee) : '—';
   row.querySelector('.pos-annual').textContent  = aFee ? fmt(aFee) : '—';
@@ -242,7 +242,7 @@ function recalcTotals() {
   document.querySelectorAll('.item-row').forEach(row => {
     const sal   = parseFloat(row.querySelector('.pos-salary').value) || 0;
     const alloc = parseFloat(row.querySelector('.pos-alloc').value)  || 0;
-    const mFee  = sal * mult * alloc;
+    const mFee  = sal * mult * (alloc / 100);
     tm += mFee; ta += mFee * 12;
   });
   document.getElementById('totalMonthly').textContent = tm ? fmt(tm) : '—';
