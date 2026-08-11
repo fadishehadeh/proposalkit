@@ -22,9 +22,17 @@ $showAll   = !$companyId;
     <?php endforeach ?>
   </ul>
 
-  <a href="<?= url('/positions/create' . ($companyId ? "?company={$companyId}" : '')) ?>" class="btn btn-primary btn-sm">
-    <i class="bi bi-plus-lg me-1"></i> Add Position
-  </a>
+  <div class="d-flex gap-2">
+    <a href="<?= url('/positions/export' . ($companyId ? "?company={$companyId}" : '')) ?>" class="btn btn-outline-success btn-sm">
+      <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+    </a>
+    <a href="<?= url('/positions/import') ?>" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-upload me-1"></i> Import
+    </a>
+    <a href="<?= url('/positions/create' . ($companyId ? "?company={$companyId}" : '')) ?>" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i> Add Position
+    </a>
+  </div>
 </div>
 
 <div class="card">
