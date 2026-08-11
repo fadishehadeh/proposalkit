@@ -103,6 +103,7 @@ function proposals_excel(int $id): void
         $ws->setCellValue("E{$r}", $annual);
 
         $ws->getStyle("A{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $ws->getStyle("C{$r}")->getNumberFormat()->setFormatCode('0%');
         $ws->getStyle("C{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $ws->getStyle("D{$r}:E{$r}")->getNumberFormat()->setFormatCode($numFmt);
         $ws->getStyle("D{$r}:E{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
@@ -178,6 +179,7 @@ function proposals_excel(int $id): void
         $ws2->getStyle("B{$r2}:E{$r2}")->getNumberFormat()->setFormatCode($numFmt);
         $ws2->getStyle("G{$r2}:H{$r2}")->getNumberFormat()->setFormatCode($numFmt);
         $ws2->getStyle("C{$r2}:D{$r2}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $ws2->getStyle("F{$r2}")->getNumberFormat()->setFormatCode('0%');
         $ws2->getStyle("F{$r2}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $ws2->getStyle("A{$r2}:H{$r2}")->getFont()->setName('Arial')->setSize(9);
 

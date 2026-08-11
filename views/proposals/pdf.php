@@ -123,7 +123,7 @@ foreach ($items as $item) {
         <tr>
           <td style="color:#94a3b8; font-size:7.5pt"><?= $i + 1 ?></td>
           <td><?= e($item['designation']) ?></td>
-          <td class="center"><?= number_format((float)$item['allocation'], 2) ?></td>
+          <td class="center"><?= number_format((float)$item['allocation'] * 100, 0) ?>%</td>
           <td class="num"><?= number_format($mFee, 0) ?></td>
           <td class="num"><?= number_format($aFee, 0) ?></td>
         </tr>

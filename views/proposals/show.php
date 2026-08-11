@@ -166,7 +166,7 @@ document.getElementById('topbar-actions').innerHTML = `
           <tr>
             <td class="text-muted" style="font-size:12px"><?= $i + 1 ?></td>
             <td><?= e($item['designation']) ?></td>
-            <td class="text-center"><?= number_format((float)$item['allocation'], 2) ?></td>
+            <td class="text-center"><?= number_format((float)$item['allocation'] * 100, 0) ?>%</td>
             <td class="text-end num text-muted"><?= number_format($base, 0) ?></td>
             <td class="text-end num fw-semibold"><?= number_format($mFee, 0) ?></td>
             <td class="text-end num"><?= number_format($aFee, 0) ?></td>
