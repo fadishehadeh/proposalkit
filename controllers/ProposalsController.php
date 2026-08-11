@@ -134,6 +134,19 @@ function proposals_store(): void
         );
     }
 
+    // Optional contract upload
+    if (!empty($_FILES['contract']['tmp_name']) && $_FILES['contract']['error'] === UPLOAD_ERR_OK) {
+        $allowed = ['pdf', 'doc', 'docx'];
+        $ext     = strtolower(pathinfo($_FILES['contract']['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, $allowed) && $_FILES['contract']['size'] <= 20 * 1024 * 1024) {
+            $dir      = BASE_PATH . '/public/contracts/';
+            $filename = "proposal_{$id}.{$ext}";
+            if (move_uploaded_file($_FILES['contract']['tmp_name'], $dir . $filename)) {
+                db_run('UPDATE proposals SET contract_path = ? WHERE id = ?', ["contracts/{$filename}", $id]);
+            }
+        }
+    }
+
     clear_old();
     flash('success', 'Proposal created.');
     redirect("/proposals/{$id}");

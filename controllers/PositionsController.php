@@ -254,7 +254,7 @@ function positions_import_process(): void
         $reader->setReadDataOnly(true);
         $ss = $reader->load($_FILES['file']['tmp_name']);
         $ws = $ss->getActiveSheet();
-    } catch (\Exception $e) {
+    } catch (\Throwable $e) {
         flash('error', 'Could not read the file: ' . htmlspecialchars($e->getMessage()));
         redirect('/positions/import');
     }

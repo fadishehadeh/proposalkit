@@ -27,7 +27,7 @@ foreach ($positions as $p) {
 
 <div class="row">
   <div class="col-xl-11">
-    <form method="post" action="<?= url('/proposals/create') ?>" id="proposalForm">
+    <form method="post" action="<?= url('/proposals/create') ?>" id="proposalForm" enctype="multipart/form-data">
       <?= csrf_field() ?>
 
       <!-- Proposal Details -->
@@ -129,6 +129,13 @@ foreach ($positions as $p) {
             </tfoot>
           </table>
         </div>
+      </div>
+
+      <div class="card mb-4 p-3">
+        <label class="form-label fw-500 mb-1" style="font-size:13px">
+          <i class="bi bi-file-earmark-text me-1"></i> Contract <span class="text-muted fw-normal">(optional — PDF, DOC, DOCX, max 20 MB)</span>
+        </label>
+        <input type="file" name="contract" class="form-control form-control-sm" accept=".pdf,.doc,.docx" style="max-width:360px">
       </div>
 
       <div class="d-flex gap-2">
