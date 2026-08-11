@@ -87,6 +87,7 @@
     .flash { border-radius: 8px; padding: 11px 16px; margin-bottom: 18px; font-size: 13.5px; }
     .flash-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
     .flash-error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .flash-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
     .rate-pill { display: inline-block; background: #eff6ff; color: #1d4ed8; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
     .co-pill   { display: inline-block; background: #f0fdf4; color: #166534; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
     .num { font-variant-numeric: tabular-nums; }
@@ -137,10 +138,34 @@
     <a href="<?= url('/proposals/create') ?>" class="<?= current_uri() === '/proposals/create' ? 'active' : '' ?>">
       <i class="bi bi-plus-circle"></i> New Proposal
     </a>
+
+    <?php if (auth_superadmin()): ?>
+    <div class="sidebar-label">Admin</div>
+    <a href="<?= url('/admin/users') ?>" class="<?= str_starts_with(current_uri(), '/admin') ? 'active' : '' ?>">
+      <i class="bi bi-people"></i> Users
+    </a>
+    <?php endif ?>
   </nav>
 
   <div class="sidebar-footer">
+    <?php $__u = auth_user(); if ($__u): ?>
+    <div style="margin-bottom:8px;border-bottom:1px solid #1e293b;padding-bottom:8px">
+      <div style="color:#cbd5e1;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+        <?= e($__u['name']) ?>
+      </div>
+      <div style="color:#475569;font-size:11px;margin-top:1px">
+        <?= $__u['role'] === 'superadmin' ? 'Super Admin' : 'User' ?>
+      </div>
+    </div>
+    <form method="post" action="<?= url('/logout') ?>" style="margin:0">
+      <?= csrf_field() ?>
+      <button type="submit" style="background:none;border:none;padding:0;color:#475569;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px">
+        <i class="bi bi-box-arrow-right"></i> Sign out
+      </button>
+    </form>
+    <?php else: ?>
     ProposalKit &copy; <?= date('Y') ?>
+    <?php endif ?>
   </div>
 </div>
 
@@ -156,6 +181,9 @@
     <?php endif ?>
     <?php if ($msg = get_flash('error')): ?>
       <div class="flash flash-error"><i class="bi bi-exclamation-circle me-2"></i><?= $msg ?></div>
+    <?php endif ?>
+    <?php if ($msg = get_flash('warning')): ?>
+      <div class="flash flash-warning"><i class="bi bi-exclamation-triangle me-2"></i><?= $msg ?></div>
     <?php endif ?>
 
     <?= $content ?>

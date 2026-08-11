@@ -8,6 +8,9 @@ define('BASE_PATH', __DIR__);
 require BASE_PATH . '/vendor/autoload.php';
 require BASE_PATH . '/src/helpers.php';
 require BASE_PATH . '/src/db.php';
+require BASE_PATH . '/src/auth.php';
+require BASE_PATH . '/controllers/AuthController.php';
+require BASE_PATH . '/controllers/AdminController.php';
 require BASE_PATH . '/controllers/DashboardController.php';
 require BASE_PATH . '/controllers/CompaniesController.php';
 require BASE_PATH . '/controllers/ClientsController.php';
@@ -22,55 +25,71 @@ if ($uri === '') $uri = '/';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+// Auth gate — allow login route through, require auth for everything else
+if ($uri !== '/login') {
+    auth_require();
+}
+
 $routes = [
-    ['GET',  '#^/$#',                               'dashboard_index'],
+    // Auth
+    ['GET',  '#^/login$#',                             'auth_login_page'],
+    ['POST', '#^/login$#',                             'auth_login_submit'],
+    ['POST', '#^/logout$#',                            'auth_logout_action'],
     // Dashboard
-    ['GET',  '#^/dashboard$#',                        'dashboard_index'],
+    ['GET',  '#^/$#',                                  'dashboard_index'],
+    ['GET',  '#^/dashboard$#',                         'dashboard_index'],
+    // Admin — users
+    ['GET',  '#^/admin/users$#',                       'admin_users_index'],
+    ['GET',  '#^/admin/users/create$#',                'admin_users_create'],
+    ['POST', '#^/admin/users/create$#',                'admin_users_store'],
+    ['GET',  '#^/admin/users/(\d+)/edit$#',            'admin_users_edit'],
+    ['POST', '#^/admin/users/(\d+)/edit$#',            'admin_users_update'],
+    ['POST', '#^/admin/users/(\d+)/delete$#',          'admin_users_destroy'],
     // Clients
-    ['GET',  '#^/clients$#',                          'clients_index'],
-    ['GET',  '#^/clients/create$#',                   'clients_create'],
-    ['POST', '#^/clients/create$#',                   'clients_store'],
-    ['GET',  '#^/clients/(\d+)$#',                    'clients_show'],
-    ['GET',  '#^/clients/(\d+)/edit$#',               'clients_edit'],
-    ['POST', '#^/clients/(\d+)/edit$#',               'clients_update'],
-    ['POST', '#^/clients/(\d+)/delete$#',             'clients_destroy'],
+    ['GET',  '#^/clients$#',                           'clients_index'],
+    ['GET',  '#^/clients/create$#',                    'clients_create'],
+    ['POST', '#^/clients/create$#',                    'clients_store'],
+    ['GET',  '#^/clients/(\d+)$#',                     'clients_show'],
+    ['GET',  '#^/clients/(\d+)/edit$#',                'clients_edit'],
+    ['POST', '#^/clients/(\d+)/edit$#',                'clients_update'],
+    ['POST', '#^/clients/(\d+)/delete$#',              'clients_destroy'],
     // Companies
-    ['GET',  '#^/companies$#',                      'companies_index'],
-    ['GET',  '#^/companies/create$#',               'companies_create'],
-    ['POST', '#^/companies/create$#',               'companies_store'],
-    ['GET',  '#^/companies/(\d+)/edit$#',           'companies_edit'],
-    ['POST', '#^/companies/(\d+)/edit$#',           'companies_update'],
-    ['POST', '#^/companies/(\d+)/delete$#',         'companies_destroy'],
+    ['GET',  '#^/companies$#',                         'companies_index'],
+    ['GET',  '#^/companies/create$#',                  'companies_create'],
+    ['POST', '#^/companies/create$#',                  'companies_store'],
+    ['GET',  '#^/companies/(\d+)/edit$#',              'companies_edit'],
+    ['POST', '#^/companies/(\d+)/edit$#',              'companies_update'],
+    ['POST', '#^/companies/(\d+)/delete$#',            'companies_destroy'],
     // Positions
-    ['GET',  '#^/positions$#',                      'positions_index'],
-    ['GET',  '#^/positions/create$#',               'positions_create'],
-    ['POST', '#^/positions/create$#',               'positions_store'],
-    ['GET',  '#^/positions/export$#',               'positions_export'],
-    ['GET',  '#^/positions/import$#',               'positions_import'],
-    ['POST', '#^/positions/import$#',               'positions_import_process'],
-    ['GET',  '#^/positions/(\d+)/edit$#',           'positions_edit'],
-    ['POST', '#^/positions/(\d+)/edit$#',           'positions_update'],
-    ['POST', '#^/positions/(\d+)/delete$#',         'positions_destroy'],
+    ['GET',  '#^/positions$#',                         'positions_index'],
+    ['GET',  '#^/positions/create$#',                  'positions_create'],
+    ['POST', '#^/positions/create$#',                  'positions_store'],
+    ['GET',  '#^/positions/export$#',                  'positions_export'],
+    ['GET',  '#^/positions/import$#',                  'positions_import'],
+    ['POST', '#^/positions/import$#',                  'positions_import_process'],
+    ['GET',  '#^/positions/(\d+)/edit$#',              'positions_edit'],
+    ['POST', '#^/positions/(\d+)/edit$#',              'positions_update'],
+    ['POST', '#^/positions/(\d+)/delete$#',            'positions_destroy'],
     // Guide
-    ['GET',  '#^/guide$#',                          'guide_page'],
+    ['GET',  '#^/guide$#',                             'guide_page'],
     // Rate card
-    ['GET',  '#^/rate-card$#',                      'rate_card_index'],
+    ['GET',  '#^/rate-card$#',                         'rate_card_index'],
     // Proposals
-    ['GET',  '#^/proposals$#',                      'proposals_index'],
-    ['GET',  '#^/proposals/create$#',               'proposals_create'],
-    ['POST', '#^/proposals/create$#',               'proposals_store'],
-    ['GET',  '#^/proposals/(\d+)$#',                'proposals_show'],
-    ['GET',  '#^/proposals/(\d+)/edit$#',           'proposals_edit'],
-    ['POST', '#^/proposals/(\d+)/edit$#',           'proposals_update'],
-    ['POST', '#^/proposals/(\d+)/contract/upload$#',  'proposals_contract_upload'],
+    ['GET',  '#^/proposals$#',                         'proposals_index'],
+    ['GET',  '#^/proposals/create$#',                  'proposals_create'],
+    ['POST', '#^/proposals/create$#',                  'proposals_store'],
+    ['GET',  '#^/proposals/(\d+)$#',                   'proposals_show'],
+    ['GET',  '#^/proposals/(\d+)/edit$#',              'proposals_edit'],
+    ['POST', '#^/proposals/(\d+)/edit$#',              'proposals_update'],
+    ['POST', '#^/proposals/(\d+)/contract/upload$#',   'proposals_contract_upload'],
     ['GET',  '#^/proposals/(\d+)/contract/download$#', 'proposals_contract_download'],
-    ['POST', '#^/proposals/(\d+)/contract/remove$#',  'proposals_contract_remove'],
-    ['GET',  '#^/proposals/(\d+)/pdf$#',            'proposals_pdf'],
-    ['GET',  '#^/proposals/(\d+)/export/excel$#',   'proposals_excel'],
-    ['POST', '#^/proposals/(\d+)/delete$#',         'proposals_destroy'],
-    ['POST', '#^/proposals/(\d+)/status$#',         'proposals_status'],
-    ['POST', '#^/proposals/(\d+)/clone$#',          'proposals_clone'],
-    ['POST', '#^/proposals/(\d+)/version$#',        'proposals_version'],
+    ['POST', '#^/proposals/(\d+)/contract/remove$#',   'proposals_contract_remove'],
+    ['GET',  '#^/proposals/(\d+)/pdf$#',               'proposals_pdf'],
+    ['GET',  '#^/proposals/(\d+)/export/excel$#',      'proposals_excel'],
+    ['POST', '#^/proposals/(\d+)/delete$#',            'proposals_destroy'],
+    ['POST', '#^/proposals/(\d+)/status$#',            'proposals_status'],
+    ['POST', '#^/proposals/(\d+)/clone$#',             'proposals_clone'],
+    ['POST', '#^/proposals/(\d+)/version$#',           'proposals_version'],
 ];
 
 $matched = false;
@@ -93,6 +112,6 @@ if (!$matched) {
     http_response_code(404);
     echo '<!DOCTYPE html><html><body style="font-family:sans-serif;padding:40px">
           <h2>404 — Page not found</h2>
-          <a href="' . url('/positions') . '">Go to Positions</a>
+          <a href="' . url('/') . '">Go to Dashboard</a>
           </body></html>';
 }

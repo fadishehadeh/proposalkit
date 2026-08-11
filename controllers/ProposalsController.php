@@ -3,17 +3,22 @@ declare(strict_types=1);
 
 function rate_card_index(): void
 {
-    $companies         = db_all('SELECT * FROM companies WHERE is_active=1 ORDER BY sort_order, name');
+    $cf        = auth_company_in('id');
+    $companies = db_all('SELECT * FROM companies WHERE is_active=1' . $cf['sql'] . ' ORDER BY sort_order, name', $cf['params']);
     $companyId         = (int) ($_GET['company'] ?? 0) ?: null;
     $currencies        = config('currencies');
     $multipliers       = config('multipliers');
     $selected_mult     = (float) ($_GET['multiplier'] ?? 1.4);
     $selected_currency = in_array($_GET['currency'] ?? '', $currencies) ? $_GET['currency'] : 'AED';
 
+    $pcf = auth_company_in('p.company_id');
     if ($companyId) {
         $positions = db_all('SELECT * FROM positions WHERE IFNULL(is_active,1)=1 AND company_id=? ORDER BY sort_order, designation', [$companyId]);
     } else {
-        $positions = db_all('SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id=p.company_id WHERE IFNULL(p.is_active,1)=1 ORDER BY c.sort_order, p.sort_order, p.designation');
+        $positions = db_all(
+            'SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id=p.company_id WHERE IFNULL(p.is_active,1)=1' . $pcf['sql'] . ' ORDER BY c.sort_order, p.sort_order, p.designation',
+            $pcf['params']
+        );
     }
 
     layout('rate-card.index', 'Rate Card', compact(
@@ -28,24 +33,32 @@ function proposals_index(): void
     $allowed = ['', 'draft', 'sent', 'approved', 'rejected'];
     if (!in_array($status, $allowed, true)) $status = '';
 
+    $cf = auth_company_in('pr.company_id');
+
     if ($status) {
-        $proposals = db_all('
-            SELECT pr.*, c.name AS company_name, c.logo_path AS company_logo
-            FROM proposals pr
-            LEFT JOIN companies c ON c.id = pr.company_id
-            WHERE pr.status = ?
-            ORDER BY pr.created_at DESC
-        ', [$status]);
+        $proposals = db_all(
+            'SELECT pr.*, c.name AS company_name, c.logo_path AS company_logo
+             FROM proposals pr
+             LEFT JOIN companies c ON c.id = pr.company_id
+             WHERE pr.status = ?' . $cf['sql'] . '
+             ORDER BY pr.created_at DESC',
+            array_merge([$status], $cf['params'])
+        );
     } else {
-        $proposals = db_all('
-            SELECT pr.*, c.name AS company_name, c.logo_path AS company_logo
-            FROM proposals pr
-            LEFT JOIN companies c ON c.id = pr.company_id
-            ORDER BY pr.created_at DESC
-        ');
+        $proposals = db_all(
+            'SELECT pr.*, c.name AS company_name, c.logo_path AS company_logo
+             FROM proposals pr
+             LEFT JOIN companies c ON c.id = pr.company_id
+             WHERE 1=1' . $cf['sql'] . '
+             ORDER BY pr.created_at DESC',
+            $cf['params']
+        );
     }
 
-    $counts = db_all('SELECT status, COUNT(*) AS n FROM proposals GROUP BY status');
+    $counts = db_all(
+        'SELECT status, COUNT(*) AS n FROM proposals WHERE 1=1' . $cf['sql'] . ' GROUP BY status',
+        $cf['params']
+    );
     $statusCounts = ['draft' => 0, 'sent' => 0, 'approved' => 0, 'rejected' => 0];
     $total = 0;
     foreach ($counts as $row) {
@@ -58,15 +71,18 @@ function proposals_index(): void
 
 function proposals_create(): void
 {
-    $companies   = db_all('SELECT * FROM companies WHERE is_active=1 ORDER BY sort_order, name');
-    $clients     = db_all('SELECT * FROM clients WHERE is_active=1 ORDER BY name');
-    $positions   = db_all('
-        SELECT p.*, c.name AS company_name
-        FROM positions p
-        LEFT JOIN companies c ON c.id = p.company_id
-        WHERE IFNULL(p.is_active, 1) = 1
-        ORDER BY c.sort_order, p.sort_order, p.designation
-    ');
+    $cf        = auth_company_in('id');
+    $companies = db_all('SELECT * FROM companies WHERE is_active=1' . $cf['sql'] . ' ORDER BY sort_order, name', $cf['params']);
+    $clients   = db_all('SELECT * FROM clients WHERE is_active=1 ORDER BY name');
+    $pcf       = auth_company_in('p.company_id');
+    $positions = db_all(
+        'SELECT p.*, c.name AS company_name
+         FROM positions p
+         LEFT JOIN companies c ON c.id = p.company_id
+         WHERE IFNULL(p.is_active, 1) = 1' . $pcf['sql'] . '
+         ORDER BY c.sort_order, p.sort_order, p.designation',
+        $pcf['params']
+    );
     $currencies  = config('currencies');
     $multipliers = config('multipliers');
     layout('proposals.create', 'New Proposal', compact('positions', 'companies', 'clients', 'currencies', 'multipliers'));
@@ -196,16 +212,19 @@ function proposals_edit(int $id): void
     $proposal = db_fetch('SELECT * FROM proposals WHERE id = ?', [$id]);
     if (!$proposal) { flash('error', 'Proposal not found.'); redirect('/proposals'); }
 
-    $items      = db_all('SELECT * FROM proposal_items WHERE proposal_id = ? ORDER BY sort_order', [$id]);
-    $companies  = db_all('SELECT * FROM companies WHERE is_active=1 ORDER BY sort_order, name');
-    $clients    = db_all('SELECT * FROM clients WHERE is_active=1 ORDER BY name');
-    $positions  = db_all('
-        SELECT p.*, c.name AS company_name
-        FROM positions p
-        LEFT JOIN companies c ON c.id = p.company_id
-        WHERE IFNULL(p.is_active, 1) = 1
-        ORDER BY c.sort_order, p.sort_order, p.designation
-    ');
+    $items     = db_all('SELECT * FROM proposal_items WHERE proposal_id = ? ORDER BY sort_order', [$id]);
+    $cf        = auth_company_in('id');
+    $companies = db_all('SELECT * FROM companies WHERE is_active=1' . $cf['sql'] . ' ORDER BY sort_order, name', $cf['params']);
+    $clients   = db_all('SELECT * FROM clients WHERE is_active=1 ORDER BY name');
+    $pcf       = auth_company_in('p.company_id');
+    $positions = db_all(
+        'SELECT p.*, c.name AS company_name
+         FROM positions p
+         LEFT JOIN companies c ON c.id = p.company_id
+         WHERE IFNULL(p.is_active, 1) = 1' . $pcf['sql'] . '
+         ORDER BY c.sort_order, p.sort_order, p.designation',
+        $pcf['params']
+    );
     $currencies  = config('currencies');
     $multipliers = config('multipliers');
 

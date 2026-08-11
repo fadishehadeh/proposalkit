@@ -10,14 +10,29 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 
 function positions_index(): void
 {
-    $companies = db_all('SELECT * FROM companies WHERE is_active=1 ORDER BY sort_order, name');
+    $cids = auth_company_ids(); // null = superadmin (all), [] = no access, [1,2,...] = allowed
+
+    // Build company list scoped to user's access
+    if ($cids === null) {
+        $companies = db_all('SELECT * FROM companies WHERE is_active=1 ORDER BY sort_order, name');
+    } elseif (empty($cids)) {
+        $companies = [];
+    } else {
+        $ph        = implode(',', array_fill(0, count($cids), '?'));
+        $companies = db_all("SELECT * FROM companies WHERE is_active=1 AND id IN ({$ph}) ORDER BY sort_order, name", $cids);
+    }
+
     $companyId = (int) ($_GET['company'] ?? 0) ?: null;
+    $cf        = auth_company_in('p.company_id');
 
     if ($companyId) {
-        $positions    = db_all('SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id = p.company_id WHERE p.company_id = ? ORDER BY p.sort_order, p.designation', [$companyId]);
+        $positions     = db_all('SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id = p.company_id WHERE p.company_id = ? ORDER BY p.sort_order, p.designation', [$companyId]);
         $activeCompany = db_fetch('SELECT * FROM companies WHERE id = ?', [$companyId]);
     } else {
-        $positions    = db_all('SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id = p.company_id ORDER BY c.sort_order, p.sort_order, p.designation');
+        $positions     = db_all(
+            'SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id = p.company_id WHERE 1=1' . $cf['sql'] . ' ORDER BY c.sort_order, p.sort_order, p.designation',
+            $cf['params']
+        );
         $activeCompany = null;
     }
 
@@ -26,7 +41,8 @@ function positions_index(): void
 
 function positions_create(): void
 {
-    $companies = db_all('SELECT * FROM companies WHERE is_active=1 ORDER BY sort_order, name');
+    $cf        = auth_company_in('id');
+    $companies = db_all('SELECT * FROM companies WHERE is_active=1' . $cf['sql'] . ' ORDER BY sort_order, name', $cf['params']);
     $presetCompanyId = (int) ($_GET['company'] ?? 0) ?: null;
     layout('positions.form', 'Add Position', [
         'position'        => null,
@@ -72,7 +88,8 @@ function positions_edit(int $id): void
 {
     $position  = db_fetch('SELECT * FROM positions WHERE id = ?', [$id]);
     if (!$position) { flash('error', 'Position not found.'); redirect('/positions'); }
-    $companies = db_all('SELECT * FROM companies WHERE is_active=1 ORDER BY sort_order, name');
+    $cf        = auth_company_in('id');
+    $companies = db_all('SELECT * FROM companies WHERE is_active=1' . $cf['sql'] . ' ORDER BY sort_order, name', $cf['params']);
     layout('positions.form', 'Edit Position', [
         'position'        => $position,
         'action'          => url("/positions/{$id}/edit"),
@@ -135,6 +152,7 @@ function positions_destroy(int $id): void
 function positions_export(): void
 {
     $companyId = (int) ($_GET['company'] ?? 0) ?: null;
+    $cf        = auth_company_in('p.company_id');
 
     if ($companyId) {
         $positions = db_all(
@@ -143,7 +161,8 @@ function positions_export(): void
         );
     } else {
         $positions = db_all(
-            'SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id = p.company_id ORDER BY c.sort_order, p.sort_order, p.designation'
+            'SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id = p.company_id WHERE 1=1' . $cf['sql'] . ' ORDER BY c.sort_order, p.sort_order, p.designation',
+            $cf['params']
         );
     }
 
