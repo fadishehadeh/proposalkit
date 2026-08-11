@@ -359,3 +359,84 @@ function proposals_destroy(int $id): void
     flash('success', 'Proposal deleted.');
     redirect('/proposals');
 }
+
+function proposals_contract_upload(int $id): void
+{
+    if (!csrf_verify()) { flash('error', 'Invalid request.'); redirect("/proposals/{$id}"); }
+
+    $proposal = db_fetch('SELECT * FROM proposals WHERE id = ?', [$id]);
+    if (!$proposal) { flash('error', 'Proposal not found.'); redirect('/proposals'); }
+
+    if (empty($_FILES['contract']['tmp_name']) || $_FILES['contract']['error'] !== UPLOAD_ERR_OK) {
+        flash('error', 'Upload failed — no file received.');
+        redirect("/proposals/{$id}");
+    }
+
+    $allowed = ['pdf' => 'application/pdf', 'doc' => 'application/msword',
+                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    $ext = strtolower(pathinfo($_FILES['contract']['name'], PATHINFO_EXTENSION));
+    if (!array_key_exists($ext, $allowed)) {
+        flash('error', 'Only PDF, DOC, and DOCX files are allowed.');
+        redirect("/proposals/{$id}");
+    }
+    if ($_FILES['contract']['size'] > 20 * 1024 * 1024) {
+        flash('error', 'File must be under 20 MB.');
+        redirect("/proposals/{$id}");
+    }
+
+    $dir      = BASE_PATH . '/public/contracts/';
+    $filename = "proposal_{$id}.{$ext}";
+    $dest     = $dir . $filename;
+
+    // Remove old contract file if a different extension was used
+    foreach (array_keys($allowed) as $e) {
+        $old = $dir . "proposal_{$id}.{$e}";
+        if ($e !== $ext && file_exists($old)) @unlink($old);
+    }
+
+    if (!move_uploaded_file($_FILES['contract']['tmp_name'], $dest)) {
+        flash('error', 'Could not save the file. Check server permissions.');
+        redirect("/proposals/{$id}");
+    }
+
+    db_run('UPDATE proposals SET contract_path = ? WHERE id = ?', ["contracts/{$filename}", $id]);
+    flash('success', 'Contract uploaded.');
+    redirect("/proposals/{$id}");
+}
+
+function proposals_contract_download(int $id): void
+{
+    $proposal = db_fetch('SELECT contract_path FROM proposals WHERE id = ?', [$id]);
+    if (!$proposal || !$proposal['contract_path']) {
+        http_response_code(404); echo 'No contract found.'; exit;
+    }
+    $path = BASE_PATH . '/public/' . $proposal['contract_path'];
+    if (!file_exists($path)) {
+        http_response_code(404); echo 'File not found.'; exit;
+    }
+    $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    $mime = match($ext) {
+        'pdf'  => 'application/pdf',
+        'doc'  => 'application/msword',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        default => 'application/octet-stream',
+    };
+    header('Content-Type: ' . $mime);
+    header('Content-Disposition: inline; filename="contract_proposal_' . $id . '.' . $ext . '"');
+    header('Content-Length: ' . filesize($path));
+    readfile($path);
+    exit;
+}
+
+function proposals_contract_remove(int $id): void
+{
+    if (!csrf_verify()) { flash('error', 'Invalid request.'); redirect("/proposals/{$id}"); }
+    $proposal = db_fetch('SELECT contract_path FROM proposals WHERE id = ?', [$id]);
+    if ($proposal && $proposal['contract_path']) {
+        $path = BASE_PATH . '/public/' . $proposal['contract_path'];
+        if (file_exists($path)) @unlink($path);
+        db_run('UPDATE proposals SET contract_path = NULL WHERE id = ?', [$id]);
+    }
+    flash('success', 'Contract removed.');
+    redirect("/proposals/{$id}");
+}

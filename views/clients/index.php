@@ -58,6 +58,7 @@
             </span>
           </td>
           <td class="text-end" style="white-space:nowrap">
+            <a href="<?= url("/clients/{$cl['id']}") ?>" class="btn btn-sm btn-outline-secondary">View</a>
             <a href="<?= url("/clients/{$cl['id']}/edit") ?>" class="btn btn-sm btn-outline-secondary">Edit</a>
             <?php if ($cl['proposal_count'] == 0): ?>
             <form method="post" action="<?= url("/clients/{$cl['id']}/delete") ?>" class="d-inline"

@@ -95,6 +95,25 @@ function clients_update(int $id): void
     redirect('/clients');
 }
 
+function clients_show(int $id): void
+{
+    $client = db_fetch('SELECT * FROM clients WHERE id = ?', [$id]);
+    if (!$client) { flash('error', 'Client not found.'); redirect('/clients'); }
+
+    $proposals = db_all('
+        SELECT p.*,
+               COALESCE(SUM(pi.monthly_salary * p.multiplier * pi.allocation), 0) AS total_monthly,
+               COUNT(DISTINCT pi.id) AS position_count
+        FROM proposals p
+        LEFT JOIN proposal_items pi ON pi.proposal_id = p.id
+        WHERE p.client_id = ?
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
+    ', [$id]);
+
+    layout('clients.show', e($client['name']), compact('client', 'proposals'));
+}
+
 function clients_destroy(int $id): void
 {
     if (!csrf_verify()) { flash('error', 'Invalid request.'); redirect('/clients'); }

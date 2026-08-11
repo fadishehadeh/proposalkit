@@ -206,6 +206,45 @@ document.getElementById('topbar-actions').innerHTML = `
   </div>
 </div>
 
+<!-- Contract -->
+<div class="card mt-4 p-3">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-file-earmark-text" style="font-size:18px;color:#64748b"></i>
+      <span class="fw-semibold" style="font-size:14px">Contract</span>
+      <?php if ($proposal['contract_path']): ?>
+        <span class="badge-active" style="font-size:11px">Uploaded</span>
+      <?php else: ?>
+        <span class="text-muted" style="font-size:12px">No contract yet</span>
+      <?php endif ?>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      <?php if ($proposal['contract_path']): ?>
+        <a href="<?= url("/proposals/{$proposal['id']}/contract/download") ?>"
+           target="_blank" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-download me-1"></i> View / Download
+        </a>
+        <form method="post" action="<?= url("/proposals/{$proposal['id']}/contract/remove") ?>"
+              onsubmit="return confirm('Remove the contract file?')">
+          <?= csrf_field() ?>
+          <button type="submit" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-trash me-1"></i> Remove
+          </button>
+        </form>
+      <?php endif ?>
+      <form method="post" action="<?= url("/proposals/{$proposal['id']}/contract/upload") ?>"
+            enctype="multipart/form-data" class="d-flex align-items-center gap-2">
+        <?= csrf_field() ?>
+        <input type="file" name="contract" class="form-control form-control-sm" accept=".pdf,.doc,.docx" required
+               style="max-width:220px">
+        <button type="submit" class="btn btn-sm btn-primary">
+          <i class="bi bi-upload me-1"></i> <?= $proposal['contract_path'] ? 'Replace' : 'Upload' ?>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div class="mt-4 d-flex gap-2">
   <a href="<?= url("/proposals/{$proposal['id']}/edit") ?>" class="btn btn-outline-secondary">
     <i class="bi bi-pencil me-1"></i> Edit
