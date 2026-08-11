@@ -261,12 +261,16 @@ function positions_import_process(): void
 
     $validCompanyIds = array_flip(array_map('intval', array_column(db_all('SELECT id FROM companies'), 'id')));
 
-    $updated  = 0;
-    $inserted = 0;
-    $skipped  = 0;
-    $errors   = [];
-    $highestRow = $ws->getHighestRow();
+    $updated     = 0;
+    $inserted    = 0;
+    $deleted     = 0;
+    $deactivated = 0;
+    $skipped     = 0;
+    $errors      = [];
+    $seenIds     = [];   // IDs present in the Excel file
+    $highestRow  = $ws->getHighestRow();
 
+    // Pass 1: update/insert all rows from the file
     for ($row = 4; $row <= $highestRow; $row++) {
         $id            = trim((string) $ws->getCell("A{$row}")->getValue());
         $companyId     = trim((string) $ws->getCell("B{$row}")->getValue());
@@ -298,6 +302,7 @@ function positions_import_process(): void
                 'UPDATE positions SET designation=?, monthly_salary=?, sort_order=?, is_active=?, updated_at=NOW() WHERE id=?',
                 [$designation, $monthlySalary, $sortOrderInt, $isActiveInt, $idInt]
             );
+            $seenIds[] = $idInt;
             $updated++;
         } else {
             $companyIdInt = (int) $companyId;
@@ -306,18 +311,42 @@ function positions_import_process(): void
                 $skipped++;
                 continue;
             }
-            db_insert(
+            $newId = db_insert(
                 'INSERT INTO positions (company_id, designation, monthly_salary, sort_order, is_active) VALUES (?, ?, ?, ?, ?)',
                 [$companyIdInt, $designation, $monthlySalary, $sortOrderInt, $isActiveInt]
             );
+            $seenIds[] = $newId;
             $inserted++;
         }
     }
 
+    // Pass 2: remove positions not in the file
+    // IDs used in at least one proposal item must not be hard-deleted — deactivate instead
+    if (!empty($seenIds)) {
+        $placeholders = implode(',', array_fill(0, count($seenIds), '?'));
+        $missing = db_all(
+            "SELECT id FROM positions WHERE id NOT IN ({$placeholders})",
+            $seenIds
+        );
+        foreach ($missing as $m) {
+            $mid  = (int) $m['id'];
+            $used = db_fetch('SELECT id FROM proposal_items WHERE position_id = ? LIMIT 1', [$mid]);
+            if ($used) {
+                db_run('UPDATE positions SET is_active=0, updated_at=NOW() WHERE id=?', [$mid]);
+                $deactivated++;
+            } else {
+                db_run('DELETE FROM positions WHERE id=?', [$mid]);
+                $deleted++;
+            }
+        }
+    }
+
     $parts = array_filter([
-        $updated  ? "{$updated} updated"  : '',
-        $inserted ? "{$inserted} added"   : '',
-        $skipped  ? "{$skipped} skipped"  : '',
+        $updated     ? "{$updated} updated"         : '',
+        $inserted    ? "{$inserted} added"           : '',
+        $deleted     ? "{$deleted} deleted"          : '',
+        $deactivated ? "{$deactivated} deactivated"  : '',
+        $skipped     ? "{$skipped} skipped"          : '',
     ]);
     $msg = 'Import complete: ' . implode(', ', $parts ?: ['no changes']) . '.';
     if ($errors) {
