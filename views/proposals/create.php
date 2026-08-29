@@ -1,15 +1,15 @@
 <?php
-// Build positions map: all positions with company info
 $posMap    = [];
 $posByComp = ['all' => []];
 foreach ($positions as $p) {
     $pid = $p['id'];
     $cid = (int)($p['company_id'] ?? 0);
     $posMap[$pid] = [
-        'id'             => $pid,
-        'designation'    => $p['designation'],
-        'monthly_salary' => (float)$p['monthly_salary'],
-        'company_id'     => $cid,
+        'id'                      => $pid,
+        'designation'             => $p['designation'],
+        'monthly_salary_doha'     => (float)($p['monthly_salary_doha'] ?? $p['monthly_salary'] ?? 0),
+        'monthly_salary_lebanon'  => (float)($p['monthly_salary_lebanon'] ?? 0),
+        'company_id'              => $cid,
     ];
     if ($cid) {
         $posByComp[$cid][] = $posMap[$pid];
@@ -26,7 +26,7 @@ foreach ($positions as $p) {
 <p class="text-muted mb-4"><a href="<?= url('/proposals') ?>"><i class="bi bi-arrow-left me-1"></i>Back to proposals</a></p>
 
 <div class="row">
-  <div class="col-xl-11">
+  <div class="col-xl-12">
     <form method="post" action="<?= url('/proposals/create') ?>" id="proposalForm" enctype="multipart/form-data">
       <?= csrf_field() ?>
 
@@ -63,9 +63,6 @@ foreach ($positions as $p) {
                    class="btn btn-outline-secondary" title="Add new client">
                   <i class="bi bi-plus-lg"></i>
                 </a>
-              </div>
-              <div style="font-size:11px;color:#94a3b8;margin-top:4px">
-                Can't find it? <a href="<?= url('/clients/create') ?>" target="_blank">Add a new client</a> then refresh.
               </div>
             </div>
             <div class="col-md-3">
@@ -109,19 +106,20 @@ foreach ($positions as $p) {
           <table class="table mb-0" id="itemsTable">
             <thead>
               <tr style="background:#f8fafc">
-                <th style="width:210px">Select Position</th>
-                <th style="min-width:170px">Designation / Title</th>
-                <th style="width:145px">Monthly Salary</th>
-                <th style="width:100px">FTE %</th>
-                <th style="width:150px">Monthly Fee</th>
-                <th style="width:150px">Annual Fee</th>
+                <th style="width:200px">Select Position</th>
+                <th style="min-width:160px">Designation / Title</th>
+                <th style="width:110px">Location</th>
+                <th style="width:140px">Monthly Salary</th>
+                <th style="width:90px">FTE %</th>
+                <th style="width:140px">Monthly Fee</th>
+                <th style="width:140px">Annual Fee</th>
                 <th style="width:40px"></th>
               </tr>
             </thead>
             <tbody id="itemsTbody"></tbody>
             <tfoot>
               <tr style="background:#f0f4f8">
-                <td colspan="4" class="text-end fw-bold pe-3">Total</td>
+                <td colspan="5" class="text-end fw-bold pe-3">Total</td>
                 <td class="fw-bold num" id="totalMonthly">—</td>
                 <td class="fw-bold num" id="totalAnnual">—</td>
                 <td></td>
@@ -163,21 +161,18 @@ function buildOptions(selectedId) {
   const positions = getCurrentPositions();
   let opts = '<option value="">— Custom —</option>';
   positions.forEach(p => {
-    opts += `<option value="${p.id}" ${p.id == selectedId ? 'selected' : ''} data-salary="${p.monthly_salary}">${p.designation}</option>`;
+    opts += `<option value="${p.id}" ${p.id == selectedId ? 'selected' : ''}>${p.designation}</option>`;
   });
   return opts;
 }
 
 function onCompanyChange() {
-  // Refresh position dropdowns in all existing rows
   document.querySelectorAll('.pos-select').forEach(sel => {
     const prev = sel.value;
     sel.innerHTML = buildOptions('');
-    // If the previously selected position is still available, keep it
     const opt = sel.querySelector(`option[value="${prev}"]`);
     if (opt) sel.value = prev;
     else {
-      // position not in this company — clear
       const row = sel.closest('tr');
       row.querySelector('.pos-desig').value  = '';
       row.querySelector('.pos-salary').value = '';
@@ -186,9 +181,10 @@ function onCompanyChange() {
   });
 }
 
-function addRow(posId, desig, salary, alloc) {
+function addRow(posId, desig, salary, alloc, loc) {
   const tr = document.createElement('tr');
   tr.className = 'item-row';
+  const locVal = loc || 'doha';
   tr.innerHTML = `
     <td>
       <select class="form-select form-select-sm pos-select" name="position_id[]" onchange="onPosChange(this)">
@@ -198,6 +194,12 @@ function addRow(posId, desig, salary, alloc) {
     <td>
       <input type="text" class="form-control form-control-sm pos-desig" name="designation[]"
              value="${escHtml(desig || '')}" placeholder="Enter or select above" required>
+    </td>
+    <td>
+      <select class="form-select form-select-sm pos-loc" name="location[]" onchange="onLocChange(this)">
+        <option value="doha" ${locVal === 'doha' ? 'selected' : ''}>Doha</option>
+        <option value="lebanon" ${locVal === 'lebanon' ? 'selected' : ''}>Lebanon</option>
+      </select>
     </td>
     <td>
       <input type="number" class="form-control form-control-sm pos-salary" name="monthly_salary[]"
@@ -222,8 +224,22 @@ function onPosChange(sel) {
   const row = sel.closest('tr');
   const id  = sel.value;
   if (id && POSITIONS_MAP[id]) {
-    row.querySelector('.pos-desig').value  = POSITIONS_MAP[id].designation;
-    row.querySelector('.pos-salary').value = POSITIONS_MAP[id].monthly_salary;
+    const p = POSITIONS_MAP[id];
+    row.querySelector('.pos-desig').value = p.designation;
+    const loc = row.querySelector('.pos-loc').value;
+    const sal = loc === 'lebanon' ? p.monthly_salary_lebanon : p.monthly_salary_doha;
+    row.querySelector('.pos-salary').value = sal > 0 ? sal : (p.monthly_salary_doha || p.monthly_salary_lebanon);
+  }
+  recalcRow(row);
+}
+
+function onLocChange(sel) {
+  const row = sel.closest('tr');
+  const posId = row.querySelector('.pos-select').value;
+  if (posId && POSITIONS_MAP[posId]) {
+    const p = POSITIONS_MAP[posId];
+    const sal = sel.value === 'lebanon' ? p.monthly_salary_lebanon : p.monthly_salary_doha;
+    if (sal > 0) row.querySelector('.pos-salary').value = sal;
   }
   recalcRow(row);
 }
@@ -266,6 +282,5 @@ function removeRow(btn) {
 function fmt(n) { return n.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}); }
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// Init
 addRow();
 </script>

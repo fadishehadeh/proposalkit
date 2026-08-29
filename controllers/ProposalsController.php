@@ -10,10 +10,15 @@ function rate_card_index(): void
     $multipliers       = config('multipliers');
     $selected_mult     = (float) ($_GET['multiplier'] ?? 1.4);
     $selected_currency = in_array($_GET['currency'] ?? '', $currencies) ? $_GET['currency'] : 'AED';
+    $selected_location = in_array($_GET['location'] ?? '', ['doha', 'lebanon']) ? $_GET['location'] : 'doha';
 
+    // Collect unique departments for filter
     $pcf = auth_company_in('p.company_id');
     if ($companyId) {
-        $positions = db_all('SELECT * FROM positions WHERE IFNULL(is_active,1)=1 AND company_id=? ORDER BY sort_order, designation', [$companyId]);
+        $positions = db_all(
+            'SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id=p.company_id WHERE IFNULL(p.is_active,1)=1 AND p.company_id=? ORDER BY p.sort_order, p.designation',
+            [$companyId]
+        );
     } else {
         $positions = db_all(
             'SELECT p.*, c.name AS company_name FROM positions p LEFT JOIN companies c ON c.id=p.company_id WHERE IFNULL(p.is_active,1)=1' . $pcf['sql'] . ' ORDER BY c.sort_order, p.sort_order, p.designation',
@@ -21,9 +26,14 @@ function rate_card_index(): void
         );
     }
 
+    $departments = array_values(array_unique(array_filter(array_column($positions, 'department'))));
+    sort($departments);
+    $selected_dept = $_GET['department'] ?? '';
+
     layout('rate-card.index', 'Rate Card', compact(
         'positions', 'companies', 'currencies', 'multipliers',
-        'selected_mult', 'selected_currency', 'companyId'
+        'selected_mult', 'selected_currency', 'companyId',
+        'selected_location', 'departments', 'selected_dept'
     ));
 }
 
@@ -120,6 +130,7 @@ function proposals_store(): void
     $salaries     = $_POST['monthly_salary'] ?? [];
     $allocations  = $_POST['allocation']     ?? [];
     $position_ids = $_POST['position_id']    ?? [];
+    $locations    = $_POST['location']       ?? [];
 
     $items = [];
     foreach ($designations as $i => $desig) {
@@ -127,8 +138,9 @@ function proposals_store(): void
         $sal   = (float) ($salaries[$i] ?? 0);
         $alloc = (float) ($allocations[$i] ?? 0) / 100;
         $pid   = ($position_ids[$i] ?? '') !== '' ? (int) $position_ids[$i] : null;
+        $loc   = in_array($locations[$i] ?? '', ['doha', 'lebanon']) ? $locations[$i] : 'doha';
         if ($desig === '' || $sal <= 0 || $alloc <= 0) continue;
-        $items[] = ['designation' => $desig, 'monthly_salary' => $sal, 'allocation' => $alloc, 'position_id' => $pid];
+        $items[] = ['designation' => $desig, 'monthly_salary' => $sal, 'allocation' => $alloc, 'position_id' => $pid, 'location' => $loc];
     }
     if (empty($items)) $errors[] = 'At least one position line is required.';
 
@@ -145,8 +157,8 @@ function proposals_store(): void
 
     foreach ($items as $i => $item) {
         db_run(
-            'INSERT INTO proposal_items (proposal_id, position_id, designation, monthly_salary, allocation, sort_order) VALUES (?,?,?,?,?,?)',
-            [$id, $item['position_id'], $item['designation'], $item['monthly_salary'], $item['allocation'], $i]
+            'INSERT INTO proposal_items (proposal_id, position_id, location, designation, monthly_salary, allocation, sort_order) VALUES (?,?,?,?,?,?,?)',
+            [$id, $item['position_id'], $item['location'], $item['designation'], $item['monthly_salary'], $item['allocation'], $i]
         );
     }
 
@@ -266,6 +278,7 @@ function proposals_update(int $id): void
     $salaries     = $_POST['monthly_salary'] ?? [];
     $allocations  = $_POST['allocation']     ?? [];
     $position_ids = $_POST['position_id']    ?? [];
+    $locations    = $_POST['location']       ?? [];
 
     $newItems = [];
     foreach ($designations as $i => $desig) {
@@ -273,8 +286,9 @@ function proposals_update(int $id): void
         $sal   = (float) ($salaries[$i] ?? 0);
         $alloc = (float) ($allocations[$i] ?? 0) / 100;
         $pid   = ($position_ids[$i] ?? '') !== '' ? (int) $position_ids[$i] : null;
+        $loc   = in_array($locations[$i] ?? '', ['doha', 'lebanon']) ? $locations[$i] : 'doha';
         if ($desig === '' || $sal <= 0 || $alloc <= 0) continue;
-        $newItems[] = ['designation' => $desig, 'monthly_salary' => $sal, 'allocation' => $alloc, 'position_id' => $pid];
+        $newItems[] = ['designation' => $desig, 'monthly_salary' => $sal, 'allocation' => $alloc, 'position_id' => $pid, 'location' => $loc];
     }
     if (empty($newItems)) $errors[] = 'At least one position line is required.';
 
@@ -292,8 +306,8 @@ function proposals_update(int $id): void
     db_run('DELETE FROM proposal_items WHERE proposal_id = ?', [$id]);
     foreach ($newItems as $i => $item) {
         db_run(
-            'INSERT INTO proposal_items (proposal_id, position_id, designation, monthly_salary, allocation, sort_order) VALUES (?,?,?,?,?,?)',
-            [$id, $item['position_id'], $item['designation'], $item['monthly_salary'], $item['allocation'], $i]
+            'INSERT INTO proposal_items (proposal_id, position_id, location, designation, monthly_salary, allocation, sort_order) VALUES (?,?,?,?,?,?,?)',
+            [$id, $item['position_id'], $item['location'], $item['designation'], $item['monthly_salary'], $item['allocation'], $i]
         );
     }
 
@@ -338,8 +352,8 @@ function proposals_clone(int $id): void
     $items = db_all('SELECT * FROM proposal_items WHERE proposal_id = ? ORDER BY sort_order', [$id]);
     foreach ($items as $item) {
         db_run(
-            'INSERT INTO proposal_items (proposal_id, position_id, designation, monthly_salary, allocation, sort_order) VALUES (?,?,?,?,?,?)',
-            [$newId, $item['position_id'], $item['designation'], $item['monthly_salary'], $item['allocation'], $item['sort_order']]
+            'INSERT INTO proposal_items (proposal_id, position_id, location, designation, monthly_salary, allocation, sort_order) VALUES (?,?,?,?,?,?,?)',
+            [$newId, $item['position_id'], $item['location'] ?? 'doha', $item['designation'], $item['monthly_salary'], $item['allocation'], $item['sort_order']]
         );
     }
 
@@ -375,8 +389,8 @@ function proposals_version(int $id): void
     $items = db_all('SELECT * FROM proposal_items WHERE proposal_id = ? ORDER BY sort_order', [$id]);
     foreach ($items as $item) {
         db_run(
-            'INSERT INTO proposal_items (proposal_id, position_id, designation, monthly_salary, allocation, sort_order) VALUES (?,?,?,?,?,?)',
-            [$newId, $item['position_id'], $item['designation'], $item['monthly_salary'], $item['allocation'], $item['sort_order']]
+            'INSERT INTO proposal_items (proposal_id, position_id, location, designation, monthly_salary, allocation, sort_order) VALUES (?,?,?,?,?,?,?)',
+            [$newId, $item['position_id'], $item['location'] ?? 'doha', $item['designation'], $item['monthly_salary'], $item['allocation'], $item['sort_order']]
         );
     }
 

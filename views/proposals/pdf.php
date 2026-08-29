@@ -110,19 +110,22 @@ foreach ($items as $item) {
       <tr>
         <th style="width:28px">#</th>
         <th>Position / Designation</th>
-        <th class="num" style="width:80px">FTE</th>
-        <th class="num" style="width:145px">Monthly Fee (<?= e($currency) ?>)</th>
-        <th class="num" style="width:145px">Annual Fee (<?= e($currency) ?>)</th>
+        <th class="center" style="width:70px">Location</th>
+        <th class="num" style="width:70px">FTE</th>
+        <th class="num" style="width:130px">Monthly Fee (<?= e($currency) ?>)</th>
+        <th class="num" style="width:130px">Annual Fee (<?= e($currency) ?>)</th>
       </tr>
     </thead>
     <tbody>
       <?php foreach ($items as $i => $item):
         $mFee = (float)$item['monthly_salary'] * $multiplier * (float)$item['allocation'];
         $aFee = $mFee * 12;
+        $loc  = ucfirst($item['location'] ?? 'doha');
       ?>
         <tr>
           <td style="color:#94a3b8; font-size:7.5pt"><?= $i + 1 ?></td>
           <td><?= e($item['designation']) ?></td>
+          <td class="center" style="font-size:7.5pt;color:#64748b"><?= e($loc) ?></td>
           <td class="center"><?= number_format((float)$item['allocation'] * 100, 0) ?>%</td>
           <td class="num"><?= number_format($mFee, 0) ?></td>
           <td class="num"><?= number_format($aFee, 0) ?></td>
@@ -131,7 +134,7 @@ foreach ($items as $item) {
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="2">Total</td>
+        <td colspan="3">Total</td>
         <td style="text-align:center"><?= number_format($totalFTE, 2) ?></td>
         <td class="num"><?= e($currency) ?> <?= number_format($totalM, 0) ?></td>
         <td class="num"><?= e($currency) ?> <?= number_format($totalA, 0) ?></td>

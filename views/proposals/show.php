@@ -151,10 +151,11 @@ document.getElementById('topbar-actions').innerHTML = `
         <tr>
           <th style="width:36px">#</th>
           <th>Position / Designation</th>
-          <th class="text-center" style="width:100px">FTE</th>
-          <th class="text-end" style="width:170px">Base Monthly</th>
-          <th class="text-end" style="width:170px">Monthly Fee (<?= e($currency) ?>)</th>
-          <th class="text-end" style="width:170px">Annual Fee (<?= e($currency) ?>)</th>
+          <th class="text-center" style="width:90px">Location</th>
+          <th class="text-center" style="width:80px">FTE</th>
+          <th class="text-end" style="width:150px">Base Monthly</th>
+          <th class="text-end" style="width:150px">Monthly Fee (<?= e($currency) ?>)</th>
+          <th class="text-end" style="width:150px">Annual Fee (<?= e($currency) ?>)</th>
         </tr>
       </thead>
       <tbody>
@@ -162,10 +163,16 @@ document.getElementById('topbar-actions').innerHTML = `
           $base = (float)$item['monthly_salary'];
           $mFee = $base * $multiplier * (float)$item['allocation'];
           $aFee = $mFee * 12;
+          $loc  = $item['location'] ?? 'doha';
         ?>
           <tr>
             <td class="text-muted" style="font-size:12px"><?= $i + 1 ?></td>
             <td><?= e($item['designation']) ?></td>
+            <td class="text-center">
+              <span class="badge <?= $loc === 'lebanon' ? 'bg-warning text-dark' : 'bg-primary' ?>" style="font-size:10px">
+                <?= ucfirst($loc) ?>
+              </span>
+            </td>
             <td class="text-center"><?= number_format((float)$item['allocation'] * 100, 0) ?>%</td>
             <td class="text-end num text-muted"><?= number_format($base, 0) ?></td>
             <td class="text-end num fw-semibold"><?= number_format($mFee, 0) ?></td>
@@ -175,7 +182,7 @@ document.getElementById('topbar-actions').innerHTML = `
       </tbody>
       <tfoot>
         <tr style="background:#f0f4f8">
-          <td colspan="4" class="text-end fw-bold pe-3">Total</td>
+          <td colspan="5" class="text-end fw-bold pe-3">Total</td>
           <td class="text-end num fw-bold" style="font-size:15px"><?= number_format($totalM, 0) ?></td>
           <td class="text-end num fw-bold" style="font-size:15px"><?= number_format($totalA, 0) ?></td>
         </tr>

@@ -1,103 +1,99 @@
 <?php
-$hourlyFmt = fn(float $m): string => number_format($m / 150, 2);
-$dailyFmt  = fn(float $m): string => number_format(($m / 150) * 8, 2);
-$monthFmt  = fn(float $m): string => number_format($m, 0);
-$annualFmt = fn(float $m): string => number_format($m * 12, 0);
-$showAll   = !$companyId;
+$showAll = !$companyId;
+$byCompany = !$showAll;
 ?>
-
-<!-- Company filter tabs -->
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-  <ul class="nav nav-tabs border-0 gap-1">
-    <li class="nav-item">
-      <a class="nav-link <?= $showAll ? 'active' : '' ?>" href="<?= url('/positions') ?>"
-         style="font-size:13px; padding: 6px 14px">All Companies</a>
-    </li>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <!-- Company tabs -->
+    <a href="<?= url('/positions') ?>"
+       class="btn btn-sm <?= !$companyId ? 'btn-primary' : 'btn-outline-secondary' ?>">All</a>
     <?php foreach ($companies as $c): ?>
-    <li class="nav-item">
-      <a class="nav-link <?= $companyId == $c['id'] ? 'active' : '' ?>"
-         href="<?= url('/positions?company=' . $c['id']) ?>"
-         style="font-size:13px; padding: 6px 14px"><?= e($c['name']) ?></a>
-    </li>
+      <a href="<?= url("/positions?company={$c['id']}") ?>"
+         class="btn btn-sm <?= $companyId == $c['id'] ? 'btn-primary' : 'btn-outline-secondary' ?>">
+        <?= e($c['name']) ?>
+      </a>
     <?php endforeach ?>
-  </ul>
-
+  </div>
   <div class="d-flex gap-2">
-    <a href="<?= url('/positions/export' . ($companyId ? "?company={$companyId}" : '')) ?>" class="btn btn-outline-success btn-sm">
-      <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
-    </a>
+    <?php if ($companyId): ?>
+      <a href="<?= url("/positions/create?company={$companyId}") ?>" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i> Add Position
+      </a>
+    <?php else: ?>
+      <a href="<?= url('/positions/create') ?>" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i> Add Position
+      </a>
+    <?php endif ?>
+    <a href="<?= url('/positions/export' . ($companyId ? "?company={$companyId}" : '')) ?>"
+       class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i> Export</a>
     <a href="<?= url('/positions/import') ?>" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-upload me-1"></i> Import
-    </a>
-    <a href="<?= url('/positions/create' . ($companyId ? "?company={$companyId}" : '')) ?>" class="btn btn-primary btn-sm">
-      <i class="bi bi-plus-lg me-1"></i> Add Position
     </a>
   </div>
 </div>
 
+<?php if (empty($positions)): ?>
+  <div class="card p-5 text-center text-muted">
+    No positions found. <a href="<?= url('/positions/create') ?>">Add the first one</a>.
+  </div>
+<?php else: ?>
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover mb-0">
       <thead>
         <tr>
-          <th style="width:36px">#</th>
+          <th>#</th>
           <?php if ($showAll): ?><th>Company</th><?php endif ?>
+          <th>Department</th>
           <th>Designation</th>
+          <th class="text-end">Doha / Month</th>
+          <th class="text-end">Lebanon / Month</th>
           <th class="text-end">Hourly</th>
           <th class="text-end">Daily</th>
-          <th class="text-end">Monthly</th>
-          <th class="text-end">Annual</th>
-          <th class="text-center" style="width:80px">Status</th>
-          <th style="width:100px"></th>
+          <th class="text-center">Status</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
-        <?php if (empty($positions)): ?>
-          <tr>
-            <td colspan="<?= $showAll ? 9 : 8 ?>" class="text-center text-muted py-5">
-              No positions yet.
-              <a href="<?= url('/positions/create' . ($companyId ? "?company={$companyId}" : '')) ?>">Add one</a>.
-            </td>
-          </tr>
-        <?php else: ?>
-          <?php foreach ($positions as $i => $p): ?>
-            <tr class="<?= $p['is_active'] ? '' : 'text-muted' ?>">
-              <td class="text-muted" style="font-size:12px"><?= $i + 1 ?></td>
-              <?php if ($showAll): ?>
-                <td><span class="co-pill"><?= e($p['company_name'] ?? '—') ?></span></td>
-              <?php endif ?>
-              <td class="fw-500"><?= e($p['designation']) ?></td>
-              <td class="text-end num"><?= $hourlyFmt((float)$p['monthly_salary']) ?></td>
-              <td class="text-end num"><?= $dailyFmt((float)$p['monthly_salary']) ?></td>
-              <td class="text-end num fw-semibold"><?= $monthFmt((float)$p['monthly_salary']) ?></td>
-              <td class="text-end num"><?= $annualFmt((float)$p['monthly_salary']) ?></td>
-              <td class="text-center">
-                <?php if ($p['is_active']): ?>
-                  <span class="badge-active">Active</span>
-                <?php else: ?>
-                  <span class="badge-inactive">Inactive</span>
-                <?php endif ?>
-              </td>
-              <td class="text-end">
-                <a href="<?= url("/positions/{$p['id']}/edit") ?>" class="btn btn-sm btn-outline-secondary py-0 px-2 me-1" title="Edit">
-                  <i class="bi bi-pencil" style="font-size:12px"></i>
-                </a>
-                <form method="post" action="<?= url("/positions/{$p['id']}/delete") ?>" class="d-inline"
-                      onsubmit="return confirm('Delete <?= e(addslashes($p['designation'])) ?>?')">
-                  <?= csrf_field() ?>
-                  <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Delete">
-                    <i class="bi bi-trash" style="font-size:12px"></i>
-                  </button>
-                </form>
-              </td>
-            </tr>
-          <?php endforeach ?>
-        <?php endif ?>
+        <?php foreach ($positions as $i => $p):
+          $doha = (float)($p['monthly_salary_doha'] ?? $p['monthly_salary'] ?? 0);
+          $leb  = (float)($p['monthly_salary_lebanon'] ?? 0);
+          $base = $doha ?: $leb;
+          $h    = $base > 0 ? $base / 150 : 0;
+          $d    = $h * 8;
+          $active = ($p['is_active'] ?? 1);
+        ?>
+        <tr class="<?= !$active ? 'opacity-50' : '' ?>">
+          <td class="text-muted" style="font-size:12px"><?= $i + 1 ?></td>
+          <?php if ($showAll): ?>
+            <td><span class="co-pill"><?= e($p['company_name'] ?? '') ?></span></td>
+          <?php endif ?>
+          <td class="text-muted" style="font-size:12px"><?= e($p['department'] ?? '') ?></td>
+          <td class="fw-500"><?= e($p['designation']) ?></td>
+          <td class="text-end num"><?= $doha > 0 ? number_format($doha, 0) : '<span class="text-muted">—</span>' ?></td>
+          <td class="text-end num"><?= $leb > 0 ? number_format($leb, 0) : '<span class="text-muted">—</span>' ?></td>
+          <td class="text-end num text-muted"><?= $h > 0 ? number_format($h, 2) : '—' ?></td>
+          <td class="text-end num text-muted"><?= $d > 0 ? number_format($d, 2) : '—' ?></td>
+          <td class="text-center">
+            <?php if ($active): ?>
+              <span class="badge-active" style="font-size:11px">Active</span>
+            <?php else: ?>
+              <span class="badge bg-secondary" style="font-size:11px">Inactive</span>
+            <?php endif ?>
+          </td>
+          <td>
+            <a href="<?= url("/positions/{$p['id']}/edit") ?>" class="btn btn-sm btn-outline-secondary py-0 px-2">
+              <i class="bi bi-pencil" style="font-size:11px"></i>
+            </a>
+          </td>
+        </tr>
+        <?php endforeach ?>
       </tbody>
     </table>
   </div>
 </div>
-
-<p class="text-muted mt-3" style="font-size:12px">
-  Formula: Hourly = Monthly ÷ 150 &nbsp;·&nbsp; Daily = Hourly × 8 &nbsp;·&nbsp; Annual = Monthly × 12
+<p class="text-muted mt-2" style="font-size:11px">
+  <?= count($positions) ?> position<?= count($positions) !== 1 ? 's' : '' ?>.
+  Hourly = Doha monthly / 150. Daily = Hourly &times; 8.
 </p>
+<?php endif ?>

@@ -3,3 +3,4 @@ public/logos/*
 !public/logos/.gitkeep
 .env
 *.log
+CLAUDE.md

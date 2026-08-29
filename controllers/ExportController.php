@@ -133,11 +133,11 @@ function proposals_excel(int $id): void
 
     // ── Sheet 2: Internal Detail ──────────────────────────────────────────────
     $ws2 = $ss->createSheet()->setTitle('Internal Detail');
-    foreach (['A'=>36,'B'=>18,'C'=>16,'D'=>16,'E'=>18,'F'=>10,'G'=>18,'H'=>18] as $col => $w) {
+    foreach (['A'=>36,'B'=>14,'C'=>18,'D'=>16,'E'=>16,'F'=>18,'G'=>10,'H'=>18,'I'=>18] as $col => $w) {
         $ws2->getColumnDimension($col)->setWidth($w);
     }
 
-    $ws2->mergeCells('A1:H1');
+    $ws2->mergeCells('A1:I1');
     $ws2->setCellValue('A1', 'INTERNAL RATE BREAKDOWN — ' . strtoupper($proposal['client_name']) . ' / ' . strtoupper($proposal['project_name']));
     $ws2->getRowDimension(1)->setRowHeight(28);
     $ws2->getStyle('A1')->applyFromArray([
@@ -146,11 +146,11 @@ function proposals_excel(int $id): void
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER, 'indent' => 1],
     ]);
 
-    $h2 = ['Designation', "Monthly Salary ({$currency})", 'Hourly Rate', 'Daily Rate', 'Charged Monthly', 'FTE', 'Monthly Fee', 'Annual Fee'];
+    $h2 = ['Designation', 'Location', "Monthly Salary ({$currency})", 'Hourly Rate', 'Daily Rate', 'Charged Monthly', 'FTE', 'Monthly Fee', 'Annual Fee'];
     foreach ($h2 as $ci => $h) {
         $ws2->setCellValue(chr(65 + $ci) . '2', $h);
     }
-    $ws2->getStyle('A2:H2')->applyFromArray([
+    $ws2->getStyle('A2:I2')->applyFromArray([
         'font'      => ['bold' => true, 'color' => ['rgb' => $white], 'name' => 'Arial', 'size' => 9],
         'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $accentBg]],
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
@@ -166,30 +166,32 @@ function proposals_excel(int $id): void
         $alloc   = (float)$item['allocation'];
         $mFee    = $charged * $alloc;
         $aFee    = $mFee * 12;
+        $loc     = ucfirst($item['location'] ?? 'doha');
 
         $ws2->setCellValue("A{$r2}", $item['designation']);
-        $ws2->setCellValue("B{$r2}", $sal);
-        $ws2->setCellValue("C{$r2}", $hourly);
-        $ws2->setCellValue("D{$r2}", $daily);
-        $ws2->setCellValue("E{$r2}", $charged);
-        $ws2->setCellValue("F{$r2}", $alloc);
-        $ws2->setCellValue("G{$r2}", $mFee);
-        $ws2->setCellValue("H{$r2}", $aFee);
+        $ws2->setCellValue("B{$r2}", $loc);
+        $ws2->setCellValue("C{$r2}", $sal);
+        $ws2->setCellValue("D{$r2}", $hourly);
+        $ws2->setCellValue("E{$r2}", $daily);
+        $ws2->setCellValue("F{$r2}", $charged);
+        $ws2->setCellValue("G{$r2}", $alloc);
+        $ws2->setCellValue("H{$r2}", $mFee);
+        $ws2->setCellValue("I{$r2}", $aFee);
 
-        $ws2->getStyle("B{$r2}:E{$r2}")->getNumberFormat()->setFormatCode($numFmt);
-        $ws2->getStyle("G{$r2}:H{$r2}")->getNumberFormat()->setFormatCode($numFmt);
-        $ws2->getStyle("C{$r2}:D{$r2}")->getNumberFormat()->setFormatCode('#,##0.00');
-        $ws2->getStyle("F{$r2}")->getNumberFormat()->setFormatCode('0%');
-        $ws2->getStyle("F{$r2}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $ws2->getStyle("A{$r2}:H{$r2}")->getFont()->setName('Arial')->setSize(9);
+        $ws2->getStyle("C{$r2}:F{$r2}")->getNumberFormat()->setFormatCode($numFmt);
+        $ws2->getStyle("H{$r2}:I{$r2}")->getNumberFormat()->setFormatCode($numFmt);
+        $ws2->getStyle("D{$r2}:E{$r2}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $ws2->getStyle("G{$r2}")->getNumberFormat()->setFormatCode('0%');
+        $ws2->getStyle("B{$r2}:G{$r2}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $ws2->getStyle("A{$r2}:I{$r2}")->getFont()->setName('Arial')->setSize(9);
 
         if ($i % 2 === 0) {
-            $ws2->getStyle("A{$r2}:H{$r2}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($lightBg);
+            $ws2->getStyle("A{$r2}:I{$r2}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($lightBg);
         }
         $ws2->getRowDimension($r2)->setRowHeight(16);
         $r2++;
     }
-    $ws2->getStyle("A2:H" . ($r2 - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB($borderCl);
+    $ws2->getStyle("A2:I" . ($r2 - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB($borderCl);
 
     $ss->setActiveSheetIndex(0);
 

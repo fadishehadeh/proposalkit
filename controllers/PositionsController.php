@@ -59,14 +59,17 @@ function positions_store(): void
         redirect('/positions/create');
     }
 
-    $designation    = trim($_POST['designation'] ?? '');
-    $monthly_salary = (float) ($_POST['monthly_salary'] ?? 0);
-    $sort_order     = (int) ($_POST['sort_order'] ?? 0);
-    $company_id     = (int) ($_POST['company_id'] ?? 0) ?: null;
+    $designation         = trim($_POST['designation'] ?? '');
+    $department          = trim($_POST['department'] ?? '');
+    $monthly_salary_doha    = (float) ($_POST['monthly_salary_doha'] ?? 0);
+    $monthly_salary_lebanon = (float) ($_POST['monthly_salary_lebanon'] ?? 0);
+    $sort_order          = (int) ($_POST['sort_order'] ?? 0);
+    $company_id          = (int) ($_POST['company_id'] ?? 0) ?: null;
 
     $errors = [];
     if ($designation === '') $errors[] = 'Designation is required.';
-    if ($monthly_salary <= 0) $errors[] = 'Monthly salary must be greater than zero.';
+    if ($monthly_salary_doha <= 0 && $monthly_salary_lebanon <= 0)
+        $errors[] = 'At least one market salary (Doha or Lebanon) must be greater than zero.';
 
     if ($errors) {
         set_old($_POST);
@@ -74,9 +77,10 @@ function positions_store(): void
         redirect('/positions/create');
     }
 
+    $primary = max($monthly_salary_doha, $monthly_salary_lebanon);
     db_insert(
-        'INSERT INTO positions (company_id, designation, monthly_salary, sort_order) VALUES (?, ?, ?, ?)',
-        [$company_id, $designation, $monthly_salary, $sort_order]
+        'INSERT INTO positions (company_id, department, designation, monthly_salary, monthly_salary_doha, monthly_salary_lebanon, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [$company_id, $department ?: null, $designation, $primary, $monthly_salary_doha, $monthly_salary_lebanon, $sort_order]
     );
     clear_old();
     flash('success', "Position <strong>" . e($designation) . "</strong> added.");
@@ -108,15 +112,18 @@ function positions_update(int $id): void
     $position = db_fetch('SELECT * FROM positions WHERE id = ?', [$id]);
     if (!$position) { flash('error', 'Position not found.'); redirect('/positions'); }
 
-    $designation    = trim($_POST['designation'] ?? '');
-    $monthly_salary = (float) ($_POST['monthly_salary'] ?? 0);
-    $sort_order     = (int) ($_POST['sort_order'] ?? 0);
-    $is_active      = isset($_POST['is_active']) ? 1 : 0;
-    $company_id     = (int) ($_POST['company_id'] ?? 0) ?: null;
+    $designation            = trim($_POST['designation'] ?? '');
+    $department             = trim($_POST['department'] ?? '');
+    $monthly_salary_doha    = (float) ($_POST['monthly_salary_doha'] ?? 0);
+    $monthly_salary_lebanon = (float) ($_POST['monthly_salary_lebanon'] ?? 0);
+    $sort_order             = (int) ($_POST['sort_order'] ?? 0);
+    $is_active              = isset($_POST['is_active']) ? 1 : 0;
+    $company_id             = (int) ($_POST['company_id'] ?? 0) ?: null;
 
     $errors = [];
     if ($designation === '') $errors[] = 'Designation is required.';
-    if ($monthly_salary <= 0) $errors[] = 'Monthly salary must be greater than zero.';
+    if ($monthly_salary_doha <= 0 && $monthly_salary_lebanon <= 0)
+        $errors[] = 'At least one market salary (Doha or Lebanon) must be greater than zero.';
 
     if ($errors) {
         set_old($_POST);
@@ -124,9 +131,10 @@ function positions_update(int $id): void
         redirect("/positions/{$id}/edit");
     }
 
+    $primary = max($monthly_salary_doha, $monthly_salary_lebanon);
     db_run(
-        'UPDATE positions SET company_id=?, designation=?, monthly_salary=?, sort_order=?, is_active=?, updated_at=NOW() WHERE id=?',
-        [$company_id, $designation, $monthly_salary, $sort_order, $is_active, $id]
+        'UPDATE positions SET company_id=?, department=?, designation=?, monthly_salary=?, monthly_salary_doha=?, monthly_salary_lebanon=?, sort_order=?, is_active=?, updated_at=NOW() WHERE id=?',
+        [$company_id, $department ?: null, $designation, $primary, $monthly_salary_doha, $monthly_salary_lebanon, $sort_order, $is_active, $id]
     );
     clear_old();
     flash('success', 'Position updated.');
@@ -170,7 +178,7 @@ function positions_export(): void
     $ws = $ss->getActiveSheet();
     $ws->setTitle('Positions');
 
-    $ws->mergeCells('A1:G1');
+    $ws->mergeCells('A1:I1');
     $ws->setCellValue('A1', 'Position Database — ProposalKit');
     $ws->getStyle('A1')->applyFromArray([
         'font'      => ['bold' => true, 'size' => 13, 'color' => ['argb' => 'FF1E3A5F']],
@@ -178,18 +186,18 @@ function positions_export(): void
     ]);
     $ws->getRowDimension(1)->setRowHeight(22);
 
-    $ws->mergeCells('A2:G2');
-    $ws->setCellValue('A2', 'Tip: Edit columns D-G freely. Do not change column A (ID). Leave A blank to add new rows; column B (Company ID) is required for new rows. Active: 1=Active, 0=Inactive.');
+    $ws->mergeCells('A2:I2');
+    $ws->setCellValue('A2', 'Tip: Edit columns D-I freely. Do not change column A (ID). Leave A blank to add new rows; column B (Company ID) or C (Company name) required for new rows. Active: 1=Active, 0=Inactive.');
     $ws->getStyle('A2')->applyFromArray([
         'font' => ['italic' => true, 'size' => 9, 'color' => ['argb' => 'FF64748B']],
     ]);
     $ws->getRowDimension(2)->setRowHeight(16);
 
-    $headers = ['ID', 'Company ID', 'Company', 'Designation', 'Monthly Salary', 'Sort Order', 'Active'];
+    $headers = ['ID', 'Company ID', 'Company', 'Department', 'Designation', 'Monthly Salary DOHA', 'Monthly Salary LEBANON', 'Sort Order', 'Active'];
     foreach ($headers as $i => $h) {
         $ws->setCellValue(chr(65 + $i) . '3', $h);
     }
-    $ws->getStyle('A3:G3')->applyFromArray([
+    $ws->getStyle('A3:I3')->applyFromArray([
         'font'      => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF'], 'size' => 10],
         'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1E3A5F']],
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
@@ -207,14 +215,16 @@ function positions_export(): void
         $ws->setCellValue("A{$row}", (int) $p['id']);
         $ws->setCellValue("B{$row}", (int) ($p['company_id'] ?? 0));
         $ws->setCellValue("C{$row}", $p['company_name'] ?? '');
-        $ws->setCellValue("D{$row}", $p['designation']);
-        $ws->setCellValue("E{$row}", (float) $p['monthly_salary']);
-        $ws->setCellValue("F{$row}", (int) ($p['sort_order'] ?? 0));
-        $ws->setCellValue("G{$row}", $isActiveVal);
+        $ws->setCellValue("D{$row}", $p['department'] ?? '');
+        $ws->setCellValue("E{$row}", $p['designation']);
+        $ws->setCellValue("F{$row}", (float) ($p['monthly_salary_doha'] ?? 0));
+        $ws->setCellValue("G{$row}", (float) ($p['monthly_salary_lebanon'] ?? 0));
+        $ws->setCellValue("H{$row}", (int) ($p['sort_order'] ?? 0));
+        $ws->setCellValue("I{$row}", $isActiveVal);
         $ws->getStyle("A{$row}:C{$row}")->applyFromArray($refStyle);
-        $ws->getStyle("E{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $ws->getStyle("F{$row}:G{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
         if ($row % 2 === 0) {
-            $ws->getStyle("D{$row}:G{$row}")->applyFromArray([
+            $ws->getStyle("D{$row}:I{$row}")->applyFromArray([
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF8FAFC']],
             ]);
         }
@@ -223,14 +233,16 @@ function positions_export(): void
 
     $ws->getColumnDimension('A')->setWidth(8);
     $ws->getColumnDimension('B')->setWidth(12);
-    $ws->getColumnDimension('C')->setWidth(22);
-    $ws->getColumnDimension('D')->setWidth(38);
-    $ws->getColumnDimension('E')->setWidth(16);
-    $ws->getColumnDimension('F')->setWidth(12);
-    $ws->getColumnDimension('G')->setWidth(10);
+    $ws->getColumnDimension('C')->setWidth(18);
+    $ws->getColumnDimension('D')->setWidth(22);
+    $ws->getColumnDimension('E')->setWidth(36);
+    $ws->getColumnDimension('F')->setWidth(20);
+    $ws->getColumnDimension('G')->setWidth(22);
+    $ws->getColumnDimension('H')->setWidth(12);
+    $ws->getColumnDimension('I')->setWidth(10);
 
     if ($row > 4) {
-        $ws->getStyle('A3:G' . ($row - 1))->applyFromArray([
+        $ws->getStyle('A3:I' . ($row - 1))->applyFromArray([
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFE2E8F0']]],
         ]);
     }
@@ -289,27 +301,40 @@ function positions_import_process(): void
     $seenIds     = [];   // IDs present in the Excel file
     $highestRow  = $ws->getHighestRow();
 
+    // Company name -> ID lookup for imports that leave Company ID blank
+    $companyNameMap = [];
+    foreach (db_all('SELECT id, name FROM companies') as $co) {
+        $companyNameMap[strtolower(trim($co['name']))] = (int) $co['id'];
+    }
+
     // Pass 1: update/insert all rows from the file
+    // New column layout: A=ID, B=CompanyID, C=Company(name fallback), D=Department, E=Designation, F=SalaryDoha, G=SalaryLebanon, H=SortOrder, I=Active
     for ($row = 4; $row <= $highestRow; $row++) {
-        $id            = trim((string) $ws->getCell("A{$row}")->getValue());
-        $companyId     = trim((string) $ws->getCell("B{$row}")->getValue());
-        $designation   = trim((string) $ws->getCell("D{$row}")->getValue());
-        $monthlySalary = trim((string) $ws->getCell("E{$row}")->getValue());
-        $sortOrder     = trim((string) $ws->getCell("F{$row}")->getValue());
-        $isActive      = trim((string) $ws->getCell("G{$row}")->getValue());
+        $id              = trim((string) $ws->getCell("A{$row}")->getValue());
+        $companyId       = trim((string) $ws->getCell("B{$row}")->getValue());
+        $companyName     = trim((string) $ws->getCell("C{$row}")->getValue());
+        $department      = trim((string) $ws->getCell("D{$row}")->getValue());
+        $designation     = trim((string) $ws->getCell("E{$row}")->getValue());
+        $salaryDoha      = trim((string) $ws->getCell("F{$row}")->getValue());
+        $salaryLebanon   = trim((string) $ws->getCell("G{$row}")->getValue());
+        $sortOrder       = trim((string) $ws->getCell("H{$row}")->getValue());
+        $isActive        = trim((string) $ws->getCell("I{$row}")->getValue());
 
         if ($designation === '') continue;
 
-        $monthlySalary = (float) str_replace(',', '', $monthlySalary);
-        if ($monthlySalary <= 0) {
-            $errors[] = "Row {$row}: monthly salary must be > 0 for \"{$designation}\".";
+        $salaryDohaF    = (float) str_replace(',', '', $salaryDoha);
+        $salaryLebanonF = (float) str_replace(',', '', $salaryLebanon);
+        if ($salaryDohaF <= 0 && $salaryLebanonF <= 0) {
+            $errors[] = "Row {$row}: at least one salary must be > 0 for \"{$designation}\".";
             $skipped++;
             continue;
         }
 
+        $primary      = max($salaryDohaF, $salaryLebanonF);
         $sortOrderInt = (int) $sortOrder;
         $isActiveInt  = ($isActive === '' || $isActive === '1') ? 1 : 0;
         $idInt        = (int) $id;
+        $deptVal      = $department !== '' ? $department : null;
 
         if ($idInt > 0) {
             if (!db_fetch('SELECT id FROM positions WHERE id = ?', [$idInt])) {
@@ -318,21 +343,25 @@ function positions_import_process(): void
                 continue;
             }
             db_run(
-                'UPDATE positions SET designation=?, monthly_salary=?, sort_order=?, is_active=?, updated_at=NOW() WHERE id=?',
-                [$designation, $monthlySalary, $sortOrderInt, $isActiveInt, $idInt]
+                'UPDATE positions SET department=?, designation=?, monthly_salary=?, monthly_salary_doha=?, monthly_salary_lebanon=?, sort_order=?, is_active=?, updated_at=NOW() WHERE id=?',
+                [$deptVal, $designation, $primary, $salaryDohaF, $salaryLebanonF, $sortOrderInt, $isActiveInt, $idInt]
             );
             $seenIds[] = $idInt;
             $updated++;
         } else {
             $companyIdInt = (int) $companyId;
             if (!isset($validCompanyIds[$companyIdInt])) {
-                $errors[] = "Row {$row}: invalid Company ID \"{$companyId}\" for \"{$designation}\" — skipped.";
+                // Try lookup by company name
+                $companyIdInt = $companyNameMap[strtolower($companyName)] ?? 0;
+            }
+            if (!$companyIdInt || !isset($validCompanyIds[$companyIdInt])) {
+                $errors[] = "Row {$row}: invalid Company ID/Name \"{$companyId}/{$companyName}\" for \"{$designation}\" — skipped.";
                 $skipped++;
                 continue;
             }
             $newId = db_insert(
-                'INSERT INTO positions (company_id, designation, monthly_salary, sort_order, is_active) VALUES (?, ?, ?, ?, ?)',
-                [$companyIdInt, $designation, $monthlySalary, $sortOrderInt, $isActiveInt]
+                'INSERT INTO positions (company_id, department, designation, monthly_salary, monthly_salary_doha, monthly_salary_lebanon, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [$companyIdInt, $deptVal, $designation, $primary, $salaryDohaF, $salaryLebanonF, $sortOrderInt, $isActiveInt]
             );
             $seenIds[] = $newId;
             $inserted++;
